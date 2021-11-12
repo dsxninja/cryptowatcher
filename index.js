@@ -16,23 +16,23 @@ bot.on('message', async msg => {
             break;
         case '/price':
             let status = await blockchainStatus(args[1] || 'litecoin')
-            bot.sendMessage(chatId, status.price)
+            bot.sendMessage(chatId, `Price: ${status.price}\n${status.percent_pos === 'up' ? '🟢' : '🔴'} ${status.percent}`)
             break;
         case '/watch':
             let price = args[1],
                 typeCoin = args[2]
 
             if (price == 'stop') {
-                bot.sendMessage(chatId, 'Watcher was stoped ❌') 
+                bot.sendMessage(chatId, 'Watcher was stoped :x:') 
                 clearInterval(timer)
             }
             if (price && typeCoin) {
-                bot.sendMessage(chatId, 'Watcher was started 👽')
+                bot.sendMessage(chatId, 'Watcher was started :alien:')
                 clearInterval(timer)
-                timer = setInterval(() => {          
-                    let status = blockchainStatus(args[1] || 'litecoin')
-                    status >= price.replace('$', '') ? bot.sendMessage(chatId, `Warning ${typeCoin} got your price ${price} 💵`) : null
-                }, 15000 * 60)
+                timer = setInterval(async () => {          
+                    let status = await blockchainStatus(typeCoin || 'litecoin')
+                    Number(status.price.replace('$', '')) >= Number(price) ? bot.sendMessage(chatId, `Warning ${typeCoin} got your price ${status.price}(${price}) 💵`) : null
+                }, 5000 * 60)
             }
             break;
         case '/help':
@@ -43,4 +43,3 @@ bot.on('message', async msg => {
             break;
     }
 })
-
