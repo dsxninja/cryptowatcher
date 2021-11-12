@@ -1,20 +1,11 @@
-const http = require('http');
+const axios = require('axios').default;
+const cheerio = require('cheerio');
 
-var options = {
-    host: 'www.random.org',
-    path: '/integers/?num=1&min=1&max=10&col=1&base=10&format=plain&rnd=new'
-};
-  
-callback = function(response) {
-    var str = '';
-  
-    response.on('data', function (chunk) {
-        str += chunk;
-    });
-  
-    response.on('end', function () {
-        console.log(str);
-    });
+module.exports = async (name) => {
+    let { data } = await axios.get(`https://coinmarketcap.com/currencies/${name}/`);
+    let $ = cheerio.load(data, { decodeEntities: false });
+
+    return {
+        price: $('.sc-16r8icm-0.kjciSH.priceTitle .priceValue').text()
+    }
 }
-  
-http.request(options, callback).end();
