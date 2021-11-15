@@ -3,7 +3,7 @@ const   TelegramBot = require('node-telegram-bot-api'),
         { TOKEN, TOKEN_DEV } = process.env,
         bot = new TelegramBot(TOKEN_DEV || TOKEN, {polling: true}),
         os = require('os'),
-        { parser, binance } = require('./modules/parser.js'),
+        { parser, binance } = require('./modules/network.js'),
         formatBytes = require('./modules/formatBytes.js')
 let     timer = 0
 
@@ -11,6 +11,7 @@ bot.onText(/\/help|\/start/, msg => {
     bot.sendMessage(msg.chat.id, `/price btc # Checking bitcoin price\n/info # Show server information\n/watch litecoin 260 # Watching on price litecoin, bot will anwser then your price was match with litecoin price`)
 })
 
+let netMethod = 'api'
 bot.on('message', async msg => {
     const chatId = msg.chat.id
     const args = msg.text.split(' ')
@@ -25,8 +26,10 @@ bot.on('message', async msg => {
             })
             break;
         case '/price':
-            let status = await binance(args[1] || 'ltc', args[2] || 'USDT')
-            bot.sendMessage(chatId, `Currency: ${status.name || status.reduction.toUpperCase()}\nPrice: ${status.price} <b>${status.currency}</b>\n${Number(status.percent) > 0 ? '🟢' : '🔴'} ${status.priceChange} ${status.percent}%`, { parse_mode: 'HTML' })
+            let status = netMethod == 'api' ? await binance(args[1] || 'ltc', args[2] || 'USDT') : await parser(args[1] || 'litecoin')
+            netMethod == 'api' ?
+                bot.sendMessage(chatId, `Currency: ${status.name || status.reduction.toUpperCase()}\nPrice: ${status.price} <b>${status.currency}</b>\n${Number(status.percent) > 0 ? '🟢' : '🔴'} ${status.priceChange} ${status.percent}%`, { parse_mode: 'HTML' }) :
+                bot.sendMessage(chatId, `Price: ${status.price}\n${status.percent_pos === 'up' ? '🟢' : '🔴'} ${status.percent}`)
             break;
         case '/watch':
             let price = args[1],
@@ -45,7 +48,11 @@ bot.on('message', async msg => {
                 }, 5000 * 60)
             }
             break;
-        case "/html":
+        case '/switch':
+            netMethod = netMethod == 'api' ? 'parser' : 'api'
+            bot.sendMessage(chatId, `Network methods was change on ${netMethod}`)
+            break;
+        case '/html':
             let text = '<b>bold</b>, <strong>bold</strong>\n<i>italic</i>, <em>italic</em>\n<u>underline</u>, <ins>underline</ins>\n<s>strikethrough</s>, <strike>strikethrough</strike>, <del>strikethrough</del>\n<b>bold <i>italic bold <s>italic bold strikethrough</s> <u>underline italic bold</u></i> bold</b>\n<a href="http://www.example.com/">inline URL</a>\n<a href="tg://user?id=123456789">inline mention of a user</a>\n<code>inline fixed-width code</code>\n<pre>pre-formatted fixed-width code block</pre>\n<pre><code class="language-python">pre-formatted fixed-width code block written in the Python programming language</code></pre>'
             bot.sendMessage(chatId, text, { parse_mode: 'HTML' })
             bot.sendMessage(chatId, text)
