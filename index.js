@@ -4,14 +4,31 @@ const   TelegramBot = require('node-telegram-bot-api'),
         bot = new TelegramBot(TOKEN_DEV || TOKEN, {polling: true}),
         os = require('os'),
         { parser, binance } = require('./modules/network.js'),
-        formatBytes = require('./modules/formatBytes.js')
+        formatBytes = require('./modules/formatBytes.js'), 
+        orderList = new Array
+
 let     timer = 0
+let     netMethod = 'api'
 
 bot.onText(/\/help|\/start/, msg => {
     bot.sendMessage(msg.chat.id, `/price btc # Checking bitcoin price\n/info # Show server information\n/watch litecoin 260 # Watching on price litecoin, bot will anwser then your price was match with litecoin price`)
 })
 
-let netMethod = 'api'
+function watchOn(price, typeCoin) {
+    if (price == 'stop') {
+        bot.sendMessage(chatId, 'Watcher was stoped ❌') 
+        clearInterval(timer)
+    }
+    if (price && typeCoin) {
+        bot.sendMessage(chatId, 'Watcher was started 👽')
+        clearInterval(timer)
+        timer = setInterval(async () => {          
+            let status = await parser(typeCoin || 'litecoin')
+            Number(status.price.replace('$', '')) >= Number(price) ? bot.sendMessage(chatId, `Warning ${typeCoin} got your price ${status.price}(${price}) 💵`) : null
+        }, 5000 * 60)
+    }
+}
+
 bot.on('message', async msg => {
     const chatId = msg.chat.id
     const args = msg.text.split(' ')
@@ -34,19 +51,10 @@ bot.on('message', async msg => {
         case '/watch':
             let price = args[1],
                 typeCoin = args[2]
-
-            if (price == 'stop') {
-                bot.sendMessage(chatId, 'Watcher was stoped ❌') 
-                clearInterval(timer)
-            }
-            if (price && typeCoin) {
-                bot.sendMessage(chatId, 'Watcher was started 👽')
-                clearInterval(timer)
-                timer = setInterval(async () => {          
-                    let status = await parser(typeCoin || 'litecoin')
-                    Number(status.price.replace('$', '')) >= Number(price) ? bot.sendMessage(chatId, `Warning ${typeCoin} got your price ${status.price}(${price}) 💵`) : null
-                }, 5000 * 60)
-            }
+            
+            orderList.push({username: msg.from.username, msgId: msg.message_id, price, typeCoin})
+            console.log(orderList)
+             
             break;
         case '/switch':
             netMethod = netMethod == 'api' ? 'parser' : 'api'
