@@ -7,25 +7,28 @@ const   TelegramBot = require('node-telegram-bot-api'),
         formatBytes = require('./modules/formatBytes.js'), 
         orderList = new Array
 
-let     timer = 0
-let     netMethod = 'api'
+let     netMethod = 'binance',
+        orderIdx = 0
 
 bot.onText(/\/help|\/start/, msg => {
     bot.sendMessage(msg.chat.id, `/price btc # Checking bitcoin price\n/info # Show server information\n/watch litecoin 260 # Watching on price litecoin, bot will anwser then your price was match with litecoin price`)
 })
 
-function watchOn(price, typeCoin) {
+function watchOn(price, typeCoin, chatId, orderIdx) {
+    let timer = orderList[orderIdx].timer
+    console.log(timer)
     if (price == 'stop') {
         bot.sendMessage(chatId, 'Watcher was stoped ❌') 
-        clearInterval(timer)
+        clearInterval(orderList[orderIdx].timer)
     }
-    if (price && typeCoin) {
+    if (typeof(price) == 'number' && typeCoin) {
+        console.log('checked')
         bot.sendMessage(chatId, 'Watcher was started 👽')
         clearInterval(timer)
-        timer = setInterval(async () => {          
-            let status = await parser(typeCoin || 'litecoin')
+        timer = setInterval(async () => {
+            let status = await eval(netMethod)(typeCoin || 'litecoin')
             Number(status.price.replace('$', '')) >= Number(price) ? bot.sendMessage(chatId, `Warning ${typeCoin} got your price ${status.price}(${price}) 💵`) : null
-        }, 5000 * 60)
+        }, 15000)
     }
 }
 
@@ -49,15 +52,20 @@ bot.on('message', async msg => {
                 bot.sendMessage(chatId, `Price: ${status.price}\n${status.percent_pos === 'up' ? '🟢' : '🔴'} ${status.percent}`)
             break;
         case '/watch':
-            let price = args[1],
+            let price = Number(args[1]),
                 typeCoin = args[2]
             
-            orderList.push({username: msg.from.username, msgId: msg.message_id, price, typeCoin})
-            console.log(orderList)
+            if (typeof(price) == 'number' && typeCoin) {
+                orderList.push({username: msg.from.username, msgId: msg.message_id, price, typeCoin, timer: 0})
+                watchOn(price, typeCoin, chatId, orderIdx)
+                orderIdx++
+                console.log(orderList)
+            } else
+                watchOn(args[1], null, chatId, 0)
              
             break;
         case '/switch':
-            netMethod = netMethod == 'api' ? 'parser' : 'api'
+            netMethod = netMethod == 'binance' ? 'parser' : 'binance'
             bot.sendMessage(chatId, `Network methods was change on ${netMethod}`)
             break;
         case '/html':
