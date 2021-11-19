@@ -5,7 +5,7 @@ const   TelegramBot = require('node-telegram-bot-api'),
         os = require('os'),
         { parser, binance } = require('./modules/network.js'),
         formatBytes = require('./modules/formatBytes.js'), 
-        orderList = new Array
+        orderList = new Object
 
 let     netMethod = 'binance',
         orderIdx = 0
@@ -15,19 +15,21 @@ bot.onText(/\/help|\/start/, msg => {
 })
 
 function watchOn(price, typeCoin, chatId, orderIdx) {
-    let timer = orderList[orderIdx].timer
-    console.log(timer)
+    // let timer = orderList[chatId].timer
     if (price == 'stop') {
-        bot.sendMessage(chatId, 'Watcher was stoped ❌') 
-        clearInterval(orderList[orderIdx].timer)
+        bot.sendMessage(chatId, 'Watcher was stoped ❌')
+        clearInterval(orderList[chatId]?.timer)
+        orderList[chatId] = undefined
     }
     if (typeof(price) == 'number' && typeCoin) {
         console.log('checked')
         bot.sendMessage(chatId, 'Watcher was started 👽')
-        clearInterval(timer)
-        timer = setInterval(async () => {
-            let status = await eval(netMethod)(typeCoin || 'litecoin')
-            Number(status.price.replace('$', '')) >= Number(price) ? bot.sendMessage(chatId, `Warning ${typeCoin} got your price ${status.price}(${price}) 💵`) : null
+        clearInterval(orderList[chatId].timer)
+        orderList[chatId].timer = setInterval(async () => {
+            let status = await eval(netMethod)(typeCoin || (netMethod == 'parser' ? 'litecoin' : 'ltc'))
+            console.log(status);
+            console.log(orderList);
+            Number(status.price.replace('$', '')) >= Number(price) ? bot.sendMessage(chatId, `Warning **${typeCoin}** got your price ${status.price}(${price}) 💵`, { parse_mode: 'Markdown' }) : null
         }, 15000)
     }
 }
@@ -52,16 +54,54 @@ bot.on('message', async msg => {
                 bot.sendMessage(chatId, `Price: ${status.price}\n${status.percent_pos === 'up' ? '🟢' : '🔴'} ${status.percent}`)
             break;
         case '/watch':
-            let price = Number(args[1]),
+            let price = args[1],
                 typeCoin = args[2]
             
-            if (typeof(price) == 'number' && typeCoin) {
-                orderList.push({username: msg.from.username, msgId: msg.message_id, price, typeCoin, timer: 0})
-                watchOn(price, typeCoin, chatId, orderIdx)
-                orderIdx++
-                console.log(orderList)
-            } else
-                watchOn(args[1], null, chatId, 0)
+            if (!price && !typeCoin) {
+                console.log(orderList);
+                if (!orderList[chatId]) return bot.sendMessage(chatId, `Make your first \`/watch <price> <typeCoin>\``, { parse_mode: 'Markdown' })
+                bot.sendMessage(chatId, orderList[chatId].list <= 0 ? `At the moment, the list is empty :(` : orderList[chatId].list.map((item, idx) => `<b>${idx + 1}.</b> ${item.typeCoin} <u>${item.price}</u> @${item.username}`).join('\n') + `\n\nTo delete it, write <code>/watch stop &lt;index&gt; </code>`, { parse_mode: 'HTML' })
+            } else if (price !== 'stop' && typeof(Number(price)) == 'number' && typeCoin) {
+                if (!orderList[chatId]) orderList[chatId] = { chatId, list: [] }
+                let status = await eval(netMethod)(typeCoin || (netMethod == 'parser' ? 'litecoin' : 'ltc'))
+                if (status.code) return bot.sendMessage(chatId, `You entered the name of the cryptocurrency incorrectly :#`)
+                let timer = setInterval(async () => {
+                    Number(status.price.replace('$', '')) >= Number(price) && status.code !== 400 ? bot.sendMessage(chatId, `Warning <b>${typeCoin}</b> got your price ${status.price}(${price}) 💵`, { parse_mode: 'HTML' }) : null
+                }, 15000)
+                orderList[chatId].list.push({ username: msg.from.username, msgId: msg.message_id, price, typeCoin, timer })
+                bot.sendMessage(chatId, `Watcher <u><b>${typeCoin}</b></u> was started 👽`, { parse_mode: 'HTML' })
+            } else if (price == 'stop' && typeof(Number(typeCoin)) == 'number') {
+                let watch = orderList[chatId].list[Number(typeCoin) - 1];
+                if (!watch) return bot.sendMessage(chatId, `I think you entered the wrong index :O`)
+                clearInterval(watch.timer)
+                orderList[chatId].list = orderList[chatId].list.filter((item, idx) => idx !== Number(typeCoin) - 1)
+                bot.sendMessage(chatId, `Watcher <u><b>${watch.typeCoin}</b></u> was stoped ❌`, { parse_mode: 'HTML' })
+            }
+            
+            // if (typeof(price) == 'number' && typeCoin) {
+            //     orderList[chatId] = { username: msg.from.username, msgId: msg.message_id, price, typeCoin, timer: 0 }
+            //     watchOn(price, typeCoin, chatId, orderIdx)
+            //     orderIdx++
+            //     console.log(orderList)
+            // } else watchOn(args[1], null, chatId, 0)
+
+            // if (price == 'stop') {
+            //     bot.sendMessage(chatId, 'Watcher was stoped ❌')
+            //     clearInterval(orderList[chatId]?.timer)
+            //     orderList[chatId] = undefined
+            // }
+            // if (typeof(Number(price)) == 'number' && typeCoin) {
+            //     orderList[chatId] = { username: msg.from.username, msgId: msg.message_id, price: Number(price), typeCoin, timer: 0 }
+            //     console.log('checked')
+            //     bot.sendMessage(chatId, 'Watcher was started 👽')
+            //     clearInterval(orderList[chatId].timer)
+            //     orderList[chatId].timer = setInterval(async () => {
+            //         let status = await eval(netMethod)(typeCoin || (netMethod == 'parser' ? 'litecoin' : 'ltc'))
+            //         console.log(status);
+            //         console.log(orderList);
+            //         Number(status.price.replace('$', '')) >= Number(price) ? bot.sendMessage(chatId, `Warning **${typeCoin}** got your price ${status.price}(${price}) 💵`, { parse_mode: 'Markdown' }) : null
+            //     }, 15000)
+            // }
              
             break;
         case '/switch':
