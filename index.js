@@ -5,7 +5,7 @@ const   TelegramBot = require('node-telegram-bot-api'),
         os = require('os'),
         { parser, binance } = require('./modules/network.js'),
         formatBytes = require('./modules/formatBytes.js'), 
-        orderList = new Object,
+        orderList = new Object
 
 let     netMethod = 'binance',
         orderIdx = 0
@@ -29,8 +29,8 @@ bot.on('message', async msg => {
             })
             break;
         case '/price':
-            let status = netMethod == 'api' ? await binance(args[1] || 'ltc', args[2] || 'USDT') : await parser(args[1] || 'litecoin')
-            netMethod == 'api' ?
+            let status = netMethod == 'binance' ? await binance(args[1] || 'ltc', args[2] || 'USDT') : await parser(args[1] || 'litecoin')
+            netMethod == 'binance' ?
                 bot.sendMessage(chatId, `Currency: ${status.name || status.reduction.toUpperCase()}\nPrice: ${status.price} <b>${status.currency}</b>\n${Number(status.percent) > 0 ? '🟢' : '🔴'} ${status.priceChange} ${status.percent}%`, { parse_mode: 'HTML' }) :
                 bot.sendMessage(chatId, `Price: ${status.price}\n${status.percent_pos === 'up' ? '🟢' : '🔴'} ${status.percent}`)
             break;
