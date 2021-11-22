@@ -33,6 +33,6 @@ module.exports.binance = async (name, currency = 'USDT') => {
             currency
         }
     }).catch(() => {
-        return { message: `Мы не смогли найти ${name} :{` }
+        return { message: `Мы не смогли найти ${name} :{`, code: 400 }
     })
 }
