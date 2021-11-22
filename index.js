@@ -5,34 +5,15 @@ const   TelegramBot = require('node-telegram-bot-api'),
         os = require('os'),
         { parser, binance } = require('./modules/network.js'),
         formatBytes = require('./modules/formatBytes.js'), 
-        orderList = new Object
+        orderList = new Object,
 
 let     netMethod = 'binance',
         orderIdx = 0
 
+  // CMD: Help command
 bot.onText(/\/help|\/start/, msg => {
     bot.sendMessage(msg.chat.id, `/price btc # Checking bitcoin price\n/info # Show server information\n/watch litecoin 260 # Watching on price litecoin, bot will anwser then your price was match with litecoin price`)
 })
-
-function watchOn(price, typeCoin, chatId, orderIdx) {
-    // let timer = orderList[chatId].timer
-    if (price == 'stop') {
-        bot.sendMessage(chatId, 'Watcher was stoped ❌')
-        clearInterval(orderList[chatId]?.timer)
-        orderList[chatId] = undefined
-    }
-    if (typeof(price) == 'number' && typeCoin) {
-        console.log('checked')
-        bot.sendMessage(chatId, 'Watcher was started 👽')
-        clearInterval(orderList[chatId].timer)
-        orderList[chatId].timer = setInterval(async () => {
-            let status = await eval(netMethod)(typeCoin || (netMethod == 'parser' ? 'litecoin' : 'ltc'))
-            console.log(status);
-            console.log(orderList);
-            Number(status.price.replace('$', '')) >= Number(price) ? bot.sendMessage(chatId, `Warning **${typeCoin}** got your price ${status.price}(${price}) 💵`, { parse_mode: 'Markdown' }) : null
-        }, 15000)
-    }
-}
 
 bot.on('message', async msg => {
     const chatId = msg.chat.id
@@ -56,7 +37,7 @@ bot.on('message', async msg => {
         case '/watch':
             let price = args[1],
                 typeCoin = args[2]
-            
+            // FIXME: Built normal function with promise. 
             if (!price && !typeCoin) {
                 console.log(orderList);
                 if (!orderList[chatId]) return bot.sendMessage(chatId, `Make your first \`/watch <price> <typeCoin>\``, { parse_mode: 'Markdown' })
@@ -77,32 +58,6 @@ bot.on('message', async msg => {
                 orderList[chatId].list = orderList[chatId].list.filter((item, idx) => idx !== Number(typeCoin) - 1)
                 bot.sendMessage(chatId, `Watcher <u><b>${watch.typeCoin}</b></u> was stoped ❌`, { parse_mode: 'HTML' })
             }
-            
-            // if (typeof(price) == 'number' && typeCoin) {
-            //     orderList[chatId] = { username: msg.from.username, msgId: msg.message_id, price, typeCoin, timer: 0 }
-            //     watchOn(price, typeCoin, chatId, orderIdx)
-            //     orderIdx++
-            //     console.log(orderList)
-            // } else watchOn(args[1], null, chatId, 0)
-
-            // if (price == 'stop') {
-            //     bot.sendMessage(chatId, 'Watcher was stoped ❌')
-            //     clearInterval(orderList[chatId]?.timer)
-            //     orderList[chatId] = undefined
-            // }
-            // if (typeof(Number(price)) == 'number' && typeCoin) {
-            //     orderList[chatId] = { username: msg.from.username, msgId: msg.message_id, price: Number(price), typeCoin, timer: 0 }
-            //     console.log('checked')
-            //     bot.sendMessage(chatId, 'Watcher was started 👽')
-            //     clearInterval(orderList[chatId].timer)
-            //     orderList[chatId].timer = setInterval(async () => {
-            //         let status = await eval(netMethod)(typeCoin || (netMethod == 'parser' ? 'litecoin' : 'ltc'))
-            //         console.log(status);
-            //         console.log(orderList);
-            //         Number(status.price.replace('$', '')) >= Number(price) ? bot.sendMessage(chatId, `Warning **${typeCoin}** got your price ${status.price}(${price}) 💵`, { parse_mode: 'Markdown' }) : null
-            //     }, 15000)
-            // }
-             
             break;
         case '/switch':
             netMethod = netMethod == 'binance' ? 'parser' : 'binance'
