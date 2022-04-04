@@ -27,7 +27,7 @@ module.exports = class Command extends Commands {
 
     setAuthors(cb) {
         return [
-            `<b>✨ Authors:</b>\n<b><a href="tg://user?id=2033230164">Heito</a></b>: <a href="https://heito.xyz">Site</a>\n<b><a href="tg://resolve?domain=ADXZC">dxv1d</a></b>: <a href="https://dxunity.codes">Site</a>`,
+            `<b>✨ Authors:</b>\n<b><a href="tg://user?id=2033230164">Heito</a></b>: <a href="https://heito.xyz">Site</a>\n<b><a href="tg://resolve?domain=ADXZC">dxv1d</a></b>: <a href="https://dsx.ninja">Site</a>`,
             [{ text: '🔧 System', callback_data: `${cb}:system` }]
         ]
     }
